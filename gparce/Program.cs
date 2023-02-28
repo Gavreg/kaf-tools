@@ -35,8 +35,8 @@ for (int i = 0; i<args.Length; ++i)
             Console.WriteLine("gparce [OPTIONS]");
             Console.WriteLine();
             Console.WriteLine("OPTIONS:");
-            Console.WriteLine("   -i DIR - директория входных файлов, xls со списками групп");
-            Console.WriteLine("   -o FILE - выходной файл (JSON)");
+            Console.WriteLine("   -i DIR - директория входных файлов, xls со списками групп, def - ./");
+            Console.WriteLine("   -o FILE - выходной файл (JSON), def - пусто");
             Console.WriteLine("   -s - вывод в стандартный поток");
             Console.WriteLine();
 
