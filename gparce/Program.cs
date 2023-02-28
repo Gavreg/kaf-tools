@@ -75,10 +75,7 @@ finally
 
 try
 {
-    //throw new Exception();
-
     var fl = Directory.GetFiles(xlsdir, "*.xls*");
-    //Dictionary<string, List<string>> groups = new Dictionary<string, List<string>>();
 
     GroupList groups = new GroupList();
     foreach (var f in fl)
@@ -99,10 +96,8 @@ try
                     if (rects.Select(x => x.IsThere(row, col)).Any(x => x == true))
                         continue;
 
-                    //Console.WriteLine($"{ss.Name} {row} {col}");
-                    //Console.WriteLine(ss.Cells[row, col].Text);
                     Group group = new Group();
-
+                    //Console.WriteLine("===");
                     //ищем единицу на листе Экселя
                     //затем, если под ней есть столбик 1 2 3 ... - то это список группы
                     //считываем его пока последовательность е закончится
@@ -124,12 +119,15 @@ try
                                     Name = ss.Cells[row + i, col + 2].Value ?? "",
                                     Lastname = ss.Cells[row + i, col + 3].Value ?? "",
                                 };
-                                if (Convert.IsDBNull( ss.Cells[row + i, col + 1].EntireRow.Font.Bold ) )
-                                //if (student.Surname == "Герасименко")
+
+                                //debug
+                                //Console.WriteLine(student.Surname + " " + ss.Cells[row + i, col + 1].Font.Bold);
+
+                                if ( Convert.ToString(ss.Cells[row + i, col + 1].Font.Bold) == "True")   
                                     student.IsHeadman = true;
                                 group.Students.Add(student);
 
-                                //Console.WriteLine($"{ss.Cells[row + i, col + 1].EntireRow.Font.Bold} {student.Surname} ");
+                                
                             }
                             else
                                 break;
@@ -142,10 +140,7 @@ try
                         {
 
                             group.Name = ss.Cells[row - 1, col + 1].Text;
-                            groups.Groups.Add(group);
-                            //Console.WriteLine(group.name);
-                            //foreach (var name in group.students) { Console.WriteLine(name.surname); }
-                            //Console.WriteLine();
+                            groups.Groups.Add(group);  
                         }
 
                     }
