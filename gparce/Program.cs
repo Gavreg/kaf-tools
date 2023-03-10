@@ -1,7 +1,5 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
-
-using Microsoft.Office.Interop.Excel;
 using System.Xml.Linq;
 using System.IO;
 using System.Collections;
@@ -12,9 +10,17 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Unicode;
 
+
 using utils;
+using System.ComponentModel;
+using OfficeOpenXml;
+using System.Transactions;
+
+using Microsoft.Office.Interop.Excel;
 
 // See https://aka.ms/new-console-template for more information
+
+ExcelPackage.LicenseContext = OfficeOpenXml.LicenseContext.NonCommercial;
 
 ///Входной каталог
 string xlsdir = ".\\";
@@ -50,29 +56,6 @@ for (int i = 0; i<args.Length; ++i)
 }
 
 
-
-
-
-Application oXL;
-_Workbook oWB;
-try
-{
-    oXL = new Application();
-    oXL.Visible = false;
-}
-catch(Exception ex)
-{
-    Console.WriteLine(ex.Message);
-
-    return;
-}
-finally
-{
-   
-}
-
-
-
 try
 {
     var fl = Directory.GetFiles(xlsdir, "*.xls*");
@@ -81,49 +64,60 @@ try
     foreach (var f in fl)
     {
         FileInfo fi = new FileInfo(f);
-        oWB = oXL.Workbooks.Add(fi.FullName);
+        //if (fi.Extension == ".xls")
+        //{
+        //    Application a = new Application();
+        //    _Workbook wb = a.Workbooks.Add(fi.FullName);
+        //    wb.SaveAs2(fi.Name, XlFileFormat.xlOpenXMLWorkbook);
+        //    a.Quit();
+        //}
+        ExcelPackage ex = new ExcelPackage(fi.FullName);
 
-        foreach (var sheet in oXL.Sheets)
+        foreach (var sheet in ex.Workbook.Worksheets)
         {
-            _Worksheet ss = sheet as _Worksheet;
+
             List<Rect> rects = new List<Rect>();
 
-            for (int row = 1; row < ss.UsedRange.Rows.Count; row++)
+            for (int row = 1; row < 100; row++)
             {
-                for (int col = 1; col < ss.UsedRange.Columns.Count; col++)
+                for (int col = 1; col < 100; col++)
                 {
                     //Проверка, выхдит ли текущая ячейка в исключенный диапазон
                     if (rects.Select(x => x.IsThere(row, col)).Any(x => x == true))
                         continue;
-
+                    Console.WriteLine($"{sheet.Name} {row} {col}");
                     Group group = new Group();
                     //Console.WriteLine("===");
                     //ищем единицу на листе Экселя
                     //затем, если под ней есть столбик 1 2 3 ... - то это список группы
                     //считываем его пока последовательность е закончится
-                    if (ss.Cells[row, col].Text == "1")
+                    if (sheet.Cells[row,col].Text == "1")
                     {
                         Rect r = new Rect { Row1 = row - 1, Col1 = col, Col2 = col + 3, Row2 = row };
 
                         for (int i = 0; i < 99; ++i)
                         {
-                            var val = ss.Cells[row + i, col].Value;
+                            var val = sheet.Cells[row + i, col].Text;
                             if (val == null) break;
-                            int num = (int)val;
+                            if (!Int32.TryParse(val, out var num))
+                                continue;
                             if (num - 1 == i)
                             {
                                 r.Row2 = i;
+                                var sn = sheet.Cells[row + i, col + 1]?.Value?.ToString() ?? "";
+                                var n = sheet.Cells[row + i, col + 2]?.Value?.ToString() ?? "";
+                                var ln = sheet.Cells[row + i, col + 3]?.Value?.ToString() ?? "";
+
                                 Student student = new Student
                                 {
-                                    Surname = ss.Cells[row + i, col + 1].Value ?? "",
-                                    Name = ss.Cells[row + i, col + 2].Value ?? "",
-                                    Lastname = ss.Cells[row + i, col + 3].Value ?? "",
+                                    Surname = sn,
+                                    Name = n,
+                                    Lastname = ln                                   ,
                                 };
 
                                 //debug
                                 //Console.WriteLine(student.Surname + " " + ss.Cells[row + i, col + 1].Font.Bold);
-
-                                if ( Convert.ToString(ss.Cells[row + i, col + 1].Font.Bold) == "True")   
+                                if ( sheet.Cells[row + i, col + 1].Style.Font.Bold)   
                                     student.IsHeadman = true;
                                 group.Students.Add(student);
 
@@ -139,7 +133,7 @@ try
                         if (group.Students.Count > 1)
                         {
 
-                            group.Name = ss.Cells[row - 1, col + 1].Text;
+                            group.Name = sheet.Cells[row - 1, col + 1].Text;
                             groups.Groups.Add(group);  
                         }
 
@@ -147,7 +141,7 @@ try
                 }
             }
         }
-        oWB.Close();
+       
 
     }
 
@@ -174,7 +168,7 @@ catch (Exception ex)
 }
 finally
 {
-    oXL.Quit();
+    
 }
 
 

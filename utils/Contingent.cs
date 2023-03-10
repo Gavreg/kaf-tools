@@ -2,7 +2,7 @@
 {
     public class Student
     {
-        public string Name { set; get; }
+        public string Name { set; get; } 
         public string Surname { set; get; }
         public string Lastname { set; get; }
         public bool IsHeadman { set; get; } = false;

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "gparce": {
+      "commandName": "Project",
+      "commandLineArgs": "-i lists -s"
+    }
+  }
+}
