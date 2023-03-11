@@ -13,14 +13,21 @@ using System.Text.Unicode;
 
 using utils;
 using System.ComponentModel;
-using OfficeOpenXml;
+
 using System.Transactions;
 
-using Microsoft.Office.Interop.Excel;
+//using Microsoft.Office.Interop.Excel;
+
+
+using NPOI.XSSF.UserModel;
+using NPOI.HSSF.UserModel;
+using NPOI.SS.UserModel;
+
+
 
 // See https://aka.ms/new-console-template for more information
 
-ExcelPackage.LicenseContext = OfficeOpenXml.LicenseContext.NonCommercial;
+
 
 ///Входной каталог
 string xlsdir = ".\\";
@@ -41,7 +48,7 @@ for (int i = 0; i<args.Length; ++i)
             Console.WriteLine("gparce [OPTIONS]");
             Console.WriteLine();
             Console.WriteLine("OPTIONS:");
-            Console.WriteLine("   -i DIR - директория входных файлов, xls со списками групп, def - ./");
+            Console.WriteLine("   -i DIR - директория входных файлов, xls[x] со списками групп, def - ./");
             Console.WriteLine("   -o FILE - выходной файл (JSON), def - пусто");
             Console.WriteLine("   -s - вывод в стандартный поток");
             Console.WriteLine();
@@ -61,67 +68,91 @@ try
     var fl = Directory.GetFiles(xlsdir, "*.xls*");
 
     GroupList groups = new GroupList();
-    foreach (var f in fl)
+
+    //foreach (var f in fl)
+    Parallel.ForEach(fl, f =>
     {
         FileInfo fi = new FileInfo(f);
-        //if (fi.Extension == ".xls")
-        //{
-        //    Application a = new Application();
-        //    _Workbook wb = a.Workbooks.Add(fi.FullName);
-        //    wb.SaveAs2(fi.Name, XlFileFormat.xlOpenXMLWorkbook);
-        //    a.Quit();
-        //}
-        ExcelPackage ex = new ExcelPackage(fi.FullName);
+        NPOI.SS.UserModel.IWorkbook wb;
 
-        foreach (var sheet in ex.Workbook.Worksheets)
+        using FileStream file = new FileStream(fi.FullName, FileMode.Open, FileAccess.Read);
+        if (fi.Extension == ".xls")
         {
+
+            wb = new HSSFWorkbook(file);
+        }
+        else
+        {
+            wb = new XSSFWorkbook(file);
+        }
+        file.Close();
+
+
+
+
+
+        for (int _i = 0; _i < wb.NumberOfSheets; ++_i)
+        {
+            var ws = wb.GetSheetAt(_i);
+
 
             List<Rect> rects = new List<Rect>();
 
-            for (int row = 1; row < 100; row++)
+            for (int row = 0; row < ws.LastRowNum; row++)
             {
-                for (int col = 1; col < 100; col++)
+                var _r = ws.GetRow(row);
+                if (_r == null) continue;
+                for (int col = 0; col < _r.LastCellNum; col++)
                 {
+                    ICell cell = _r.GetCell(col);
+
+
                     //Проверка, выхдит ли текущая ячейка в исключенный диапазон
                     if (rects.Select(x => x.IsThere(row, col)).Any(x => x == true))
                         continue;
-                    Console.WriteLine($"{sheet.Name} {row} {col}");
-                    Group group = new Group();
+                    //Console.WriteLine($"{wb.GetSheetName(_i)} {row} {col}");
+
                     //Console.WriteLine("===");
                     //ищем единицу на листе Экселя
                     //затем, если под ней есть столбик 1 2 3 ... - то это список группы
                     //считываем его пока последовательность е закончится
-                    if (sheet.Cells[row,col].Text == "1")
+
+
+                    if (cell?.ToString() == "1")
                     {
+                        utils.Group group = new utils.Group();
+
                         Rect r = new Rect { Row1 = row - 1, Col1 = col, Col2 = col + 3, Row2 = row };
 
                         for (int i = 0; i < 99; ++i)
                         {
-                            var val = sheet.Cells[row + i, col].Text;
+                            var val = ws.GetRow(row + i)?.GetCell(col)?.ToString();
+
                             if (val == null) break;
                             if (!Int32.TryParse(val, out var num))
                                 continue;
                             if (num - 1 == i)
                             {
                                 r.Row2 = i;
-                                var sn = sheet.Cells[row + i, col + 1]?.Value?.ToString() ?? "";
-                                var n = sheet.Cells[row + i, col + 2]?.Value?.ToString() ?? "";
-                                var ln = sheet.Cells[row + i, col + 3]?.Value?.ToString() ?? "";
+
+                                var sn = ws.GetRow(row + i).GetCell(col + 1).ToString();
+                                var n = ws.GetRow(row + i).GetCell(col + 2).ToString();
+                                var ln = ws.GetRow(row + i).GetCell(col + 3).ToString();
 
                                 Student student = new Student
                                 {
                                     Surname = sn,
                                     Name = n,
-                                    Lastname = ln                                   ,
+                                    Lastname = ln,
                                 };
 
                                 //debug
                                 //Console.WriteLine(student.Surname + " " + ss.Cells[row + i, col + 1].Font.Bold);
-                                if ( sheet.Cells[row + i, col + 1].Style.Font.Bold)   
+                                if (ws.GetRow(row + i).GetCell(col + 1).CellStyle.GetFont(wb).IsBold)
                                     student.IsHeadman = true;
                                 group.Students.Add(student);
 
-                                
+
                             }
                             else
                                 break;
@@ -133,17 +164,19 @@ try
                         if (group.Students.Count > 1)
                         {
 
-                            group.Name = sheet.Cells[row - 1, col + 1].Text;
-                            groups.Groups.Add(group);  
+                            group.Name = ws.GetRow(row - 1).GetCell(col + 1).ToString();
+                            groups.Groups.Add(group);
                         }
 
                     }
                 }
             }
         }
-       
 
-    }
+
+    });
+
+    groups.Groups.Sort((a,b) => a.Name.CompareTo(b.Name));
 
     JsonSerializerOptions options = new JsonSerializerOptions();
     options.WriteIndented = true;
