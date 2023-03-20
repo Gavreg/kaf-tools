@@ -6,6 +6,7 @@ using NPOI.SS.UserModel;
 
 
 using NPOI.XSSF.UserModel;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -14,9 +15,10 @@ using utils;
 
 
 
-// See https://aka.ms/new-console-template for more information
 
 
+Console.InputEncoding = Encoding.Unicode;
+Console.OutputEncoding = Encoding.Unicode;
 
 ///Входной каталог
 string xlsdir = ".\\";
