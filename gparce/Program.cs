@@ -1,33 +1,24 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
-using System.Xml.Linq;
-using System.IO;
-using System.Collections;
-
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Text;
-using System.Text.Encodings.Web;
-using System.Text.Unicode;
-
-
-using utils;
-using System.ComponentModel;
-
-using System.Transactions;
-
+using NPOI.HSSF.UserModel;
+using NPOI.SS.UserModel;
 //using Microsoft.Office.Interop.Excel;
 
 
 using NPOI.XSSF.UserModel;
-using NPOI.HSSF.UserModel;
-using NPOI.SS.UserModel;
+using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Unicode;
+using utils;
 
 
 
-// See https://aka.ms/new-console-template for more information
 
 
+Console.InputEncoding = Encoding.Unicode;
+Console.OutputEncoding = Encoding.Unicode;
 
 ///Входной каталог
 string xlsdir = ".\\";
@@ -39,9 +30,9 @@ bool noFileOutput = false;
 ///Вывод в стандартный поток
 bool toStd = false;
 
-for (int i = 0; i<args.Length; ++i)
+for (int i = 0; i < args.Length; ++i)
 {
-    switch(args[i])
+    switch (args[i])
     {
         case "-?":
             Console.WriteLine();
@@ -55,13 +46,12 @@ for (int i = 0; i<args.Length; ++i)
 
             return;
             break;
-        case "-i": xlsdir= args[i+1]; break;
-        case "-o": outJsonName = args[i+1]; break;
+        case "-i": xlsdir = args[++i]; break;
+        case "-o": outJsonName = args[++i]; break;
         case "-s": toStd = true; break;
 
     }
 }
-
 
 try
 {
@@ -86,9 +76,6 @@ try
             wb = new XSSFWorkbook(file);
         }
         file.Close();
-
-
-
 
 
         for (int _i = 0; _i < wb.NumberOfSheets; ++_i)
@@ -176,24 +163,23 @@ try
 
     });
 
-    groups.Groups.Sort((a,b) => a.Name.CompareTo(b.Name));
+    groups.Groups.Sort((a, b) => a.Name.CompareTo(b.Name));
 
     JsonSerializerOptions options = new JsonSerializerOptions();
     options.WriteIndented = true;
-    options.Encoder = JavaScriptEncoder.Create(UnicodeRanges.BasicLatin, UnicodeRanges.Cyrillic);
+    options.Encoder = JavaScriptEncoder.Create(UnicodeRanges.All);
     options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault;
 
-
     string jsonString = JsonSerializer.Serialize(groups, options);
-
 
     if (outJsonName != "")
         File.WriteAllText(outJsonName, jsonString);
 
-    
-
     if (toStd)
+    {
         Console.WriteLine(jsonString);
+    }
+
 }
 catch (Exception ex)
 {
@@ -201,7 +187,7 @@ catch (Exception ex)
 }
 finally
 {
-    
+
 }
 
 
@@ -235,7 +221,7 @@ public class Rect
     /// <returns>Да/нет</returns>
     public bool IsThere(int row, int col)
     {
-        return row >= Row1 && row <= Row2 && col >=Col1 && col <= Col2;
+        return row >= Row1 && row <= Row2 && col >= Col1 && col <= Col2;
     }
 };
 

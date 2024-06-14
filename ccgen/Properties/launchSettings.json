@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "ccgen": {
+      "commandName": "Project",
+      "commandLineArgs": "-g",
+      "nativeDebugging": false
+    }
+  }
+}
