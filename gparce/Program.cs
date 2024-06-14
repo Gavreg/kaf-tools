@@ -10,6 +10,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using System.Text.Unicode;
 using utils;
 
@@ -58,6 +59,9 @@ try
     var fl = Directory.GetFiles(xlsdir, "*.xls*");
 
     GroupList groups = new GroupList();
+
+    Regex gr_regex = new Regex("[А-Я]{3}(-[0-9]{2}){2}");
+    Regex direction_regex = new Regex("[0-9]{2}(.[0-9]{2}){2}");
 
     //foreach (var f in fl)
     Parallel.ForEach(fl, f =>
@@ -152,7 +156,18 @@ try
                         {
 
                             group.Name = ws.GetRow(row - 1).GetCell(col + 1).ToString();
+                            group.Direction = ws.GetRow(row - 1).GetCell(col + 3).ToString();
+
+                            var match = gr_regex.Match(group.Name);
+                            if (match.Success)
+                                group.StandardName = match.Groups[0].Value;
                             groups.Groups.Add(group);
+
+                            var matches = direction_regex.Matches(group.Direction);
+                            foreach(Match m in matches)
+                            {
+                                group.StandardDirection += m.Groups[0].Value + " ";
+                            }
                         }
 
                     }

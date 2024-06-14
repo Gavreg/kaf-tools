@@ -2,7 +2,7 @@
   "profiles": {
     "ccgen": {
       "commandName": "Project",
-      "commandLineArgs": "-g",
+      "commandLineArgs": "-i .\\gr.json -o ttt -s \"M4;A9;B9;2\" -p .\\pat2.xlsx",
       "nativeDebugging": false
     }
   }

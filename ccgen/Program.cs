@@ -1,16 +1,11 @@
 ﻿using utils;
-using NPOI.XSSF.UserModel;
-using NPOI.HSSF.UserModel;
-using NPOI.SS.UserModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using NPOI.HPSF;
-using NPOI.Util;
 using System.Text;
 using System.Text.Encodings.Web;
-using System.Text.Unicode;
-using NPOI.SS.Util;
-using MathNet.Numerics;
+using OfficeOpenXml;
+
+ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
 Console.InputEncoding = Encoding.Unicode;
 Console.OutputEncoding = Encoding.Unicode;
@@ -39,8 +34,8 @@ for (int i = 0; i < args.Length; ++i)
             Console.WriteLine("   -p FILE - файл шаблона с группами");
             Console.WriteLine("   -s SETTINGS_STRTING - строка с настройками:");
             Console.WriteLine("      CELL_GROUP;CELL_LIST;CELL_STUDENT;MODE");
-            Console.WriteLine("      CELL_LIST - ячейка, c которой начинается нумерация студентов");
             Console.WriteLine("      CELL_GROUP - ячейка, куда пишется название группы");
+            Console.WriteLine("      CELL_LIST - ячейка, c которой начинается нумерация студентов");
             Console.WriteLine("      CELL_STUDENT - ячейка с которой начинается списокгруппы");
             Console.WriteLine("      MODE - Режим:");
             Console.WriteLine("         1 - ФИО занимает 3 ячейки");
@@ -102,7 +97,7 @@ if (Console.IsInputRedirected)
 }
 else
 {
-    File.ReadAllText(inputJson, Encoding.UTF8);
+    json = File.ReadAllText(inputJson, Encoding.UTF8);
 }
 
 
@@ -118,153 +113,73 @@ Console.WriteLine(json);
 
 NPOI.SS.UserModel.IWorkbook wb = null;
 
+ExcelPackage? package  = null;
+ExcelWorksheet? paternSheet = null;
+
 if (paternFile == "")
 {
-    wb = new XSSFWorkbook();
-    wb.CreateSheet();
+    package = new ExcelPackage(new FileInfo(paternFile));
+    paternSheet = package.Workbook.Worksheets[0];
+
 }
 else
 {
-    using FileStream file = new FileStream(fi.FullName, FileMode.Open, FileAccess.Read);
-    if (fi.Extension == ".xls")
-    {
-        wb = new HSSFWorkbook(file);
-    }
-    else
-    {
-        wb = new XSSFWorkbook(file);
-    }
-    file.Close();
+    package = new ExcelPackage(new FileInfo(paternFile));
+    paternSheet = package.Workbook.Worksheets[0];
 }
 
-
-
-var paternSheet = wb.GetSheetAt(0);
-
-
-
-IWorkbook? newGr = null;
-ICellStyle? BoldStyle = null;
-IFont? font = null;
-
+List<ExcelPackage?> packages = new List<ExcelPackage?>();
 if (singleFile)
 {
-    newGr = new XSSFWorkbook();
-    font = newGr.CreateFont();
-    font.IsBold = true;
-
+    packages.Add(new ExcelPackage());
 }
-
 
 foreach (Group gr in grlist.Groups)
 {
     if (!singleFile)
-    { 
-        newGr = new XSSFWorkbook();
-        font = newGr.CreateFont();
-        font.IsBold = true;
+    {
+        packages.Add(new ExcelPackage());
+
     }
-    paternSheet.CopyTo(newGr, gr.Name, true, true);
-    var newSheet = newGr.GetSheetAt(newGr.NumberOfSheets-1);
-     
-   
+
+    var curSheet = packages.Last()?.Workbook.Worksheets.Add(gr.Name, paternSheet);
 
     if (parameters[0]!= "")
     {
-        CellReference groups_start_cell = new CellReference(parameters[0]);
-
-
-        while (groups_start_cell.Row > newSheet.LastRowNum)
-            newSheet.CreateRow(newSheet.LastRowNum + 1);
-
-        newSheet.GetRow(groups_start_cell.Row).GetCell(groups_start_cell.Col, MissingCellPolicy.CREATE_NULL_AS_BLANK).SetCellValue(gr.Name);
-
-
+        curSheet.Cells[parameters[0]].Value = gr.Name;
     }
-
-
 
 
     for (int i=0; i<gr.Students.Count; ++i)
     {
 
-
         if (parameters[1] != "")
         {
-            CellReference numbers_start_cell = new CellReference(parameters[1]);
-
-            while (numbers_start_cell.Row + i > newSheet.LastRowNum)
-                newSheet.CreateRow(newSheet.LastRowNum + 1);
-
-            ICell number_cell = newSheet.GetRow(numbers_start_cell.Row + i).GetCell(numbers_start_cell.Col, MissingCellPolicy.CREATE_NULL_AS_BLANK);
-            number_cell.SetCellValue(i + 1);
+            curSheet.Cells[curSheet.Cells[parameters[1]].Start.Row + i, curSheet.Cells[parameters[1]].Start.Column].Value = i + 1;
 
             if (gr.Students[i].IsHeadman)
             {
-                var style = newGr.CreateCellStyle();
-                try
-                {
-                    style.CloneStyleFrom(number_cell.CellStyle);
-                }
-                catch (Exception e) { }
-
-                style.SetFont(font);
-                number_cell.CellStyle = style;
+                curSheet.Cells[curSheet.Cells[parameters[1]].Start.Row + i, curSheet.Cells[parameters[1]].Start.Column].Style.Font.Bold = true;
             }
-
         }
+
 
         if (parameters[2] != "")
         {
-            CellReference students_start_cell = new CellReference(parameters[2]);
-
-            while (students_start_cell.Row + i > newSheet.LastRowNum)
-                newSheet.CreateRow(newSheet.LastRowNum + 1);
-
             switch (mode)
             {
                 case 1:
                     {
-                        ICell f_cell = newSheet.GetRow(students_start_cell.Row + i).GetCell(students_start_cell.Col + 0, MissingCellPolicy.CREATE_NULL_AS_BLANK);
-                        ICell n_cell = newSheet.GetRow(students_start_cell.Row + i).GetCell(students_start_cell.Col + 1, MissingCellPolicy.CREATE_NULL_AS_BLANK);
-                        ICell o_cell = newSheet.GetRow(students_start_cell.Row + i).GetCell(students_start_cell.Col + 2, MissingCellPolicy.CREATE_NULL_AS_BLANK);
 
-                        f_cell.SetCellValue(gr.Students[i].Surname);
-                        n_cell.SetCellValue(gr.Students[i].Name);
-                        o_cell.SetCellValue(gr.Students[i].Lastname);
-
+                        curSheet.Cells[curSheet.Cells[parameters[2]].Start.Row + i, curSheet.Cells[parameters[2]].Start.Column + 0].Value = gr.Students[i].Surname;
+                        curSheet.Cells[curSheet.Cells[parameters[2]].Start.Row + i, curSheet.Cells[parameters[2]].Start.Column + 1].Value = gr.Students[i].Name;
+                        curSheet.Cells[curSheet.Cells[parameters[2]].Start.Row + i, curSheet.Cells[parameters[2]].Start.Column + 2].Value = gr.Students[i].Lastname;
+                    
                         if (gr.Students[i].IsHeadman)
                         {
-                            var style = newGr.CreateCellStyle();
-                            try
-                            {
-                                style.CloneStyleFrom(f_cell.CellStyle);
-                            }
-                            catch(Exception e) { }
-                            
-                            style.SetFont(font);
-                            f_cell.CellStyle = style;
-
-
-                            style = newGr.CreateCellStyle();
-                            try
-                            {
-                                style.CloneStyleFrom(n_cell.CellStyle);
-                            }
-                            catch (Exception e) { }
-                           
-                            style.SetFont(font);
-                            n_cell.CellStyle = style;
-
-                            style = newGr.CreateCellStyle();
-                            try
-                            {
-                                style.CloneStyleFrom(o_cell.CellStyle);
-                            }
-                            catch (Exception e) { }
-                            
-                            style.SetFont(font);
-                            o_cell.CellStyle = style;
+                            curSheet.Cells[curSheet.Cells[parameters[2]].Start.Row + i, curSheet.Cells[parameters[2]].Start.Column + 0].Style.Font.Bold = true;
+                            curSheet.Cells[curSheet.Cells[parameters[2]].Start.Row + i, curSheet.Cells[parameters[2]].Start.Column + 1].Style.Font.Bold = true;
+                            curSheet.Cells[curSheet.Cells[parameters[2]].Start.Row + i, curSheet.Cells[parameters[2]].Start.Column + 2].Style.Font.Bold = true;
                         }
 
                         break;
@@ -279,20 +194,12 @@ foreach (Group gr in grlist.Groups)
                         if (gr.Students[i].Lastname != "")
                             fio += gr.Students[i].Lastname;
 
-                        ICell fio_cell = newSheet.GetRow(students_start_cell.Row + i).GetCell(students_start_cell.Col);
-                        fio_cell.SetCellValue(fio);
+                        curSheet.Cells[curSheet.Cells[parameters[2]].Start.Row + i, curSheet.Cells[parameters[2]].Start.Column + 0].Value = fio;
+                        
 
                         if (gr.Students[i].IsHeadman)
                         {
-                            var style = newGr.CreateCellStyle();
-                            try
-                            {
-                                style.CloneStyleFrom(fio_cell.CellStyle);
-                            }
-                            catch (Exception e) { }
-
-                            style.SetFont(font);
-                            fio_cell.CellStyle = style;
+                            curSheet.Cells[curSheet.Cells[parameters[2]].Start.Row + i, curSheet.Cells[parameters[2]].Start.Column + 0].Style.Font.Bold = true;
                         }
                         break;
                     }
@@ -306,20 +213,12 @@ foreach (Group gr in grlist.Groups)
                         if (gr.Students[i].Lastname != "")
                             fio += gr.Students[i].Lastname[0] + ".";
 
-                        ICell fio_cell = newSheet.GetRow(students_start_cell.Row + i).GetCell(students_start_cell.Col);
-                        fio_cell.SetCellValue(fio);
+                        curSheet.Cells[curSheet.Cells[parameters[2]].Start.Row + i, curSheet.Cells[parameters[2]].Start.Column + 0].Value = fio;
+                        
 
                         if (gr.Students[i].IsHeadman)
                         {
-                            var style = newGr.CreateCellStyle();
-                            try
-                            {
-                                style.CloneStyleFrom(fio_cell.CellStyle);
-                            }
-                            catch (Exception e) { }
-
-                            style.SetFont(font);
-                            fio_cell.CellStyle = style;
+                            curSheet.Cells[curSheet.Cells[parameters[2]].Start.Row + i, curSheet.Cells[parameters[2]].Start.Column + 0].Style.Font.Bold = true;
                         }
                         break;
                     }
@@ -328,25 +227,26 @@ foreach (Group gr in grlist.Groups)
         }
     }
 
-    if (!singleFile)
-    {
-        Directory.CreateDirectory($"{outFileName}");
-        FileStream xfile = new FileStream($"{outFileName}\\{gr.Name}.xlsx", FileMode.Create, System.IO.FileAccess.Write);
-        newGr.Write(xfile, false);
-        xfile.Close();
-    }
-
-   
-    
+    //if (!singleFile)
+    //{
+    //    Directory.CreateDirectory($"{outFileName}");
+    //    FileStream xfile = new FileStream($"{outFileName}\\{gr.Name}.xlsx", FileMode.Create, System.IO.FileAccess.Write);
+    //    newGr.Write(xfile, false);
+    //    xfile.Close();
+    //}
 }
 
-if (singleFile)
+//if (singleFile)
+//{
+//    FileStream xfile = new FileStream(outFileName, FileMode.Create, System.IO.FileAccess.Write);
+//    newGr.Write(xfile, false);
+//    xfile.Close();
+//}
+
+Directory.CreateDirectory($"{outFileName}");
+foreach (var p in packages)
 {
-    FileStream xfile = new FileStream(outFileName, FileMode.Create, System.IO.FileAccess.Write);
-    newGr.Write(xfile, false);
-    xfile.Close();
+    p.SaveAs($"{outFileName}\\{p.Workbook.Worksheets[0].Name}.xlsx");
 }
-
-
 
 //Console.ReadKey();

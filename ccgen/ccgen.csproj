@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="EPPlus" Version="6.2.8" />
     <PackageReference Include="NPOI" Version="2.6.0" />
   </ItemGroup>
 

@@ -2,7 +2,7 @@
   "profiles": {
     "gparce": {
       "commandName": "Project",
-      "commandLineArgs": "-i lists -s -o"
+      "commandLineArgs": "-i lists2223/ -s -o ggrr.json"
     }
   }
 }
